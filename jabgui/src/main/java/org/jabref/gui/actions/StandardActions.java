@@ -167,6 +167,7 @@ public enum StandardActions implements Action {
     REMOVE_LINK(Localization.lang("Remove link"), IconTheme.JabRefIcons.REMOVE_LINK),
     REMOVE_LINKS(Localization.lang("Remove links"), IconTheme.JabRefIcons.REMOVE_LINK),
     DELETE_FILE(Localization.lang("Permanently delete local file"), IconTheme.JabRefIcons.DELETE_FILE, KeyBinding.DELETE_ENTRY),
+    CREATE_COMMENTED_COPY(Localization.lang("Create commented copy"), IconTheme.JabRefIcons.COMMENT),
 
     HELP(Localization.lang("Online help"), IconTheme.JabRefIcons.HELP, KeyBinding.HELP),
     HELP_GROUPS(Localization.lang("Open Help page"), IconTheme.JabRefIcons.HELP, KeyBinding.HELP),

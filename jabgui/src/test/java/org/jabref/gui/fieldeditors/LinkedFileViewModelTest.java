@@ -297,4 +297,74 @@ class LinkedFileViewModelTest {
         // Assert fail if no PDF type was found
         fail();
     }
+
+    @Test
+    void isCommentedDelegatesToFileUtil() {
+        LinkedFile lf = new LinkedFile("", "paper - comments alice.pdf", "pdf");
+        assertTrue(lf.isCommented());
+    }
+
+    @Test
+    void createCommentedCopyAddsFile(@TempDir Path tempDir) throws IOException {
+        Path plainFile = tempDir.resolve("paper.pdf");
+        Files.createFile(plainFile);
+
+        linkedFile = new LinkedFile("desc", plainFile.toString(), "pdf");
+
+        when(databaseContext.getFirstExistingFileDir(filePreferences)).thenReturn(Optional.of(tempDir));
+        when(filePreferences.getFileDirectoryPattern()).thenReturn("");
+        when(filePreferences.getFileNamePattern()).thenReturn("[citationkey]");
+
+        entry.setCitationKey("doe2023");
+        entry.setFiles(List.of(linkedFile));
+
+        LinkedFileViewModel viewModel = new LinkedFileViewModel(linkedFile,
+                entry,
+                databaseContext,
+                taskExecutor,
+                dialogService,
+                preferences);
+
+        viewModel.createCommentedCopy();
+
+        String user = System.getProperty("user.name").trim().replaceAll("\\s+", "_");
+        Path expectedComment = tempDir.resolve("paper - comments " + user + ".pdf");
+
+        assertTrue(Files.exists(expectedComment), "Expected commented copy to be created");
+        assertEquals(2, entry.getFiles().size(), "Expected entry to have two linked files now");
+
+        boolean found = entry.getFiles().stream().anyMatch(f ->
+                f.getLink().equals(expectedComment.toString()));
+        assertTrue(found, "Expected commented file to be linked in entry");
+    }
+
+    @Test
+    void createCommentedCopySkipsNonPDFFile() {
+        linkedFile = new LinkedFile("desc", "image.png", "png"); // Not a PDF
+
+        LinkedFileViewModel viewModel = new LinkedFileViewModel(linkedFile,
+                entry,
+                databaseContext,
+                taskExecutor,
+                dialogService,
+                preferences);
+        viewModel.createCommentedCopy();
+
+        assertTrue(entry.getFiles().isEmpty(), "Expected no new file to be added");
+    }
+
+    @Test
+    void createCommentedCopySkipsIfAlreadyCommented() {
+        linkedFile = new LinkedFile("desc", "paper - comments user.pdf", "pdf");
+
+        LinkedFileViewModel viewModel = new LinkedFileViewModel(linkedFile,
+                entry,
+                databaseContext,
+                taskExecutor,
+                dialogService,
+                preferences);
+        viewModel.createCommentedCopy();
+
+        assertTrue(entry.getFiles().isEmpty(), "Expected no duplicate commented file to be added");
+    }
 }

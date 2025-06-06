@@ -51,6 +51,12 @@ public class ContextAction extends SimpleCommand {
                             () -> !linkedFile.getFile().isOnlineLink()
                                     && linkedFile.getFile().findIn(databaseContext, preferences.getFilePreferences()).isPresent(),
                             linkedFile.getFile().linkProperty(), bibEntry.getValue().map(BibEntry::getFieldsObservable).orElse(null));
+                    case CREATE_COMMENTED_COPY -> Bindings.createBooleanBinding(
+                            () -> !linkedFile.getFile().isOnlineLink() &&
+                                    linkedFile.getFile().findIn(databaseContext, preferences.getFilePreferences()).isPresent() &&
+                                    !linkedFile.getFile().isCommented(),
+                            linkedFile.getFile().linkProperty()
+                    );
                     default -> BindingsHelper.constantOf(true);
                 });
     }
@@ -58,6 +64,7 @@ public class ContextAction extends SimpleCommand {
     @Override
     public void execute() {
         switch (command) {
+            case CREATE_COMMENTED_COPY -> linkedFile.createCommentedCopy();
             case EDIT_FILE_LINK -> linkedFile.edit();
             case OPEN_FILE -> linkedFile.open();
             case OPEN_FOLDER -> linkedFile.openFolder();

@@ -75,6 +75,7 @@ public class ContextMenuFactory {
                 factory.createMenuItem(StandardActions.OPEN_FILE, singleCommandFactory.build(StandardActions.OPEN_FILE, linkedFile)),
                 factory.createMenuItem(StandardActions.OPEN_FOLDER, singleCommandFactory.build(StandardActions.OPEN_FOLDER, linkedFile)),
                 new SeparatorMenuItem(),
+                factory.createMenuItem(StandardActions.CREATE_COMMENTED_COPY, singleCommandFactory.build(StandardActions.CREATE_COMMENTED_COPY, linkedFile)),
                 factory.createMenuItem(StandardActions.DOWNLOAD_FILE, singleCommandFactory.build(StandardActions.DOWNLOAD_FILE, linkedFile)),
                 factory.createMenuItem(StandardActions.RENAME_FILE_TO_PATTERN, singleCommandFactory.build(StandardActions.RENAME_FILE_TO_PATTERN, linkedFile)),
                 factory.createMenuItem(StandardActions.RENAME_FILE_TO_NAME, singleCommandFactory.build(StandardActions.RENAME_FILE_TO_NAME, linkedFile)),

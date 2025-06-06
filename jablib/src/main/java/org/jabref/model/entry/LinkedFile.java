@@ -256,4 +256,8 @@ public class LinkedFile implements Serializable {
             return Optional.empty();
         }
     }
+
+    public boolean isCommented() {
+        return FileUtil.isCommentedPdf(Path.of(link.get()));
+    }
 }

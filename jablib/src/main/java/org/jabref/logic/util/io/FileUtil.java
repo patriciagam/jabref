@@ -154,7 +154,7 @@ public class FileUtil {
         List<String> uniquePathParts = uniquePathSubstrings(paths);
         return uniquePathParts.stream()
                               .filter(part -> comparePath.toString().contains(part)
-                                              && !part.equals(fileName) && part.contains(File.separator))
+                                      && !part.equals(fileName) && part.contains(File.separator))
                               .findFirst()
                               .map(part -> part.substring(0, part.lastIndexOf(File.separator)));
     }
@@ -372,9 +372,9 @@ public class FileUtil {
     public static Optional<Path> findSingleFileRecursively(String filename, Path rootDirectory) {
         try (Stream<Path> pathStream = Files.walk(rootDirectory)) {
             return pathStream
-                             .filter(Files::isRegularFile)
-                             .filter(f -> f.getFileName().toString().equals(filename))
-                             .findFirst();
+                    .filter(Files::isRegularFile)
+                    .filter(f -> f.getFileName().toString().equals(filename))
+                    .findFirst();
         } catch (UncheckedIOException | IOException ex) {
             LOGGER.error("Error trying to locate the file {} inside the directory {}", filename, rootDirectory);
         }
@@ -581,12 +581,40 @@ public class FileUtil {
         numCharsAfterEllipsis = Math.min(numCharsAfterEllipsis, name.length() - numCharsBeforeEllipsis);
 
         return name.substring(0, numCharsBeforeEllipsis) +
-               ELLIPSIS +
-               name.substring(name.length() - numCharsAfterEllipsis) +
-               extension;
+                ELLIPSIS +
+                name.substring(name.length() - numCharsAfterEllipsis) +
+                extension;
     }
 
     public static boolean isCharLegal(char c) {
         return Arrays.binarySearch(ILLEGAL_CHARS, c) < 0;
+    }
+
+    /**
+     * Test if the file is a commented pdf file by simply checking its name.
+     *
+     * @param path The file to check
+     * @return True if file ends with '- comments.pdf' or  '- comments USERNAME.pdf'
+     */
+    public static boolean isCommentedPdf(Path path) {
+        String name = path.getFileName().toString().toLowerCase();
+        return name.endsWith("- comments.pdf")
+                || name.matches(".* - comments( [^/\\\\]+)?\\.pdf");
+    }
+
+    /**
+     * Builds the path to a commented copy of a given PDF file.
+     * The commented copy is expected to have the same base name as the original,
+     * with the suffix " - comments USERNAME.pdf" appended.
+     *
+     * @param plainPdf The original PDF file path.
+     * @param userName The username to include in the commented file name.
+     * @return The path to the commented copy of the file.
+     */
+    public static Path buildCommentedCopy(Path plainPdf, String userName) {
+        String base = FileUtil.getBaseName(plainPdf.getFileName().toString());
+        Path dir = plainPdf.getParent();
+        String targetName = base + " - comments " + userName + ".pdf";
+        return dir.resolve(targetName);
     }
 }

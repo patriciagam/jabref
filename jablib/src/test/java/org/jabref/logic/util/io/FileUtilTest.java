@@ -222,16 +222,16 @@ class FileUtilTest {
     @Test
     @DisabledOnOs(value = org.junit.jupiter.api.condition.OS.WINDOWS, disabledReason = "Assumed path separator is /")
     void uniquePathSubstrings() {
-       List<String> paths = List.of("C:/uniquefile.bib",
-               "C:/downloads/filename.bib",
-               "C:/mypaper/bib/filename.bib",
-               "C:/external/mypaper/bib/filename.bib",
-               "");
+        List<String> paths = List.of("C:/uniquefile.bib",
+                "C:/downloads/filename.bib",
+                "C:/mypaper/bib/filename.bib",
+                "C:/external/mypaper/bib/filename.bib",
+                "");
         List<String> uniqPath = List.of("uniquefile.bib",
-              "downloads/filename.bib",
-              "C:/mypaper/bib/filename.bib",
-              "external/mypaper/bib/filename.bib",
-              "");
+                "downloads/filename.bib",
+                "C:/mypaper/bib/filename.bib",
+                "external/mypaper/bib/filename.bib",
+                "");
 
         List<String> result = FileUtil.uniquePathSubstrings(paths);
         assertEquals(uniqPath, result);
@@ -517,5 +517,19 @@ class FileUtilTest {
     })
     void shortenFileName(String expected, String fileName, Integer maxLength) {
         assertEquals(expected, FileUtil.shortenFileName(fileName, maxLength));
+    }
+
+    @Test
+    void testIsCommentedPdfVariants() {
+        assertTrue(FileUtil.isCommentedPdf(Path.of("paper - comments bob.pdf")));
+        assertTrue(FileUtil.isCommentedPdf(Path.of("paper - comments.pdf")));
+        assertFalse(FileUtil.isCommentedPdf(Path.of("paper.pdf")));
+    }
+
+    @Test
+    void testBuildCommentedCopy() {
+        Path original = Path.of("/tmp/paper.pdf");
+        Path expected = Path.of("/tmp/paper - comments bob.pdf");
+        assertEquals(expected, FileUtil.buildCommentedCopy(original, "bob"));
     }
 }

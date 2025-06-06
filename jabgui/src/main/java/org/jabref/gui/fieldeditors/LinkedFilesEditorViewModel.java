@@ -106,6 +106,7 @@ public class LinkedFilesEditorViewModel extends AbstractEditorViewModel {
 
     private List<LinkedFileViewModel> parseToFileViewModel(String stringValue) {
         return FileFieldParser.parse(stringValue).stream()
+                              .filter(linkedFile -> !(linkedFile.isCommented()))
                               .map(linkedFile -> new LinkedFileViewModel(
                                       linkedFile,
                                       entry,
@@ -208,17 +209,17 @@ public class LinkedFilesEditorViewModel extends AbstractEditorViewModel {
         }
         if (urlField.isEmpty() || !download_success) {
             BackgroundTask
-                .wrap(() -> fetcher.findFullTextPDF(entry))
-                .onRunning(() -> fulltextLookupInProgress.setValue(true))
-                .onFinished(() -> fulltextLookupInProgress.setValue(false))
-                .onSuccess(url -> {
-                    if (url.isPresent()) {
-                        addFromURLAndDownload(url.get());
-                    } else {
-                        dialogService.notify(Localization.lang("No full text document found"));
-                    }
-                })
-                .executeWith(taskExecutor);
+                    .wrap(() -> fetcher.findFullTextPDF(entry))
+                    .onRunning(() -> fulltextLookupInProgress.setValue(true))
+                    .onFinished(() -> fulltextLookupInProgress.setValue(false))
+                    .onSuccess(url -> {
+                        if (url.isPresent()) {
+                            addFromURLAndDownload(url.get());
+                        } else {
+                            dialogService.notify(Localization.lang("No full text document found"));
+                        }
+                    })
+                    .executeWith(taskExecutor);
         }
     }
 

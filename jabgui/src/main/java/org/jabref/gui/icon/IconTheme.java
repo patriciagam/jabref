@@ -195,6 +195,7 @@ public class IconTheme {
         MEMORYSTICK(MaterialDesignU.USB_FLASH_DRIVE_OUTLINE),
         DELETE_ENTRY(MaterialDesignD.DELETE),
         SEARCH(MaterialDesignM.MAGNIFY),
+        FILE_COMMENT(MaterialDesignC.COMMENT_TEXT_OUTLINE),
         FILE_SEARCH(MaterialDesignF.FILE_FIND),
         FILE_STAR(MaterialDesignF.FILE_STAR),
         PDF_METADATA_READ(MaterialDesignF.FORMAT_ALIGN_TOP),

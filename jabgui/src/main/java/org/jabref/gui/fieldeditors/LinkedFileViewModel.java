@@ -3,6 +3,7 @@ package org.jabref.gui.fieldeditors;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -165,7 +166,7 @@ public class LinkedFileViewModel extends AbstractViewModel {
             return ControlHelper.truncateString(linkedFile.getDescription(), -1, "...",
                     ControlHelper.EllipsisPosition.CENTER) + " (" +
                     ControlHelper.truncateString(linkedFile.getLink(), -1, "...",
-                    ControlHelper.EllipsisPosition.CENTER) + ")";
+                            ControlHelper.EllipsisPosition.CENTER) + ")";
         }
     }
 
@@ -279,7 +280,13 @@ public class LinkedFileViewModel extends AbstractViewModel {
         }
 
         try {
+            Path oldPlain = linkedFile.findIn(databaseContext, preferences.getFilePreferences()).orElse(null);
             linkedFileHandler.renameToName(targetFileName, overwriteFile);
+            Path newPlain = linkedFile.findIn(databaseContext, preferences.getFilePreferences()).orElse(null);
+
+            if (oldPlain != null && newPlain != null) {
+                syncOwnCommentCopy(oldPlain, newPlain);
+            }
         } catch (IOException e) {
             dialogService.showErrorDialogAndWait(Localization.lang("Rename failed"), Localization.lang("JabRef cannot access the file because it is being used by another process."));
         }
@@ -303,6 +310,9 @@ public class LinkedFileViewModel extends AbstractViewModel {
             // Found the linked file, so move it
             try {
                 linkedFileHandler.moveToDefaultDirectory();
+                Path oldPlain = file.get();
+                linkedFile.findIn(databaseContext, preferences.getFilePreferences())
+                          .ifPresent(newPlain -> syncOwnCommentCopy(oldPlain, newPlain));
             } catch (IOException exception) {
                 dialogService.showErrorDialogAndWait(
                         Localization.lang("Move file"),
@@ -456,5 +466,81 @@ public class LinkedFileViewModel extends AbstractViewModel {
                 databaseContext.getDatabase().insertEntry(newEntry);
             });
         });
+    }
+
+    public boolean isCommented() {
+        return this.linkedFile.isCommented();
+    }
+
+    public void createCommentedCopy() {
+        System.out.println("Create comment copy!\n");
+        if (linkedFile.isOnlineLink()
+                || !"pdf".equalsIgnoreCase(linkedFile.getFileType())
+                || linkedFile.isCommented()) {
+            return;
+        }
+
+        Optional<Path> sourceOpt = linkedFile.findIn(databaseContext, preferences.getFilePreferences());
+        if (sourceOpt.isEmpty()) {
+            return;
+        }
+        Path source = sourceOpt.get();
+
+        String user = System.getProperty("user.name").trim().replaceAll("\\s+", "_");
+        Path target = FileUtil.buildCommentedCopy(source, user);
+
+        try {
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException ex) {
+            return;
+        }
+
+        LinkedFile commented = new LinkedFile(
+                linkedFile.getDescription(),
+                target.toString(),
+                linkedFile.getFileType());
+
+        List<LinkedFile> newFiles = new ArrayList<>(entry.getFiles());
+        newFiles.add(commented);
+        entry.setFiles(newFiles);
+    }
+
+    private void syncOwnCommentCopy(Path oldPlainPath, Path newPlainPath) {
+        String user = System.getProperty("user.name").trim().replaceAll("\\s+", "_");
+
+        Path oldComment = FileUtil.buildCommentedCopy(oldPlainPath, user);
+        if (!Files.exists(oldComment)) {
+            return;
+        }
+
+        Path newComment = FileUtil.buildCommentedCopy(newPlainPath, user);
+
+        try {
+            Files.move(oldComment, newComment, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            LOGGER.warn("Could not rename/move comment copy from {} to {}", oldComment, newComment, e);
+            return;
+        }
+
+        List<LinkedFile> fresh = new ArrayList<>();
+        for (LinkedFile linkedFile : entry.getFiles()) {
+            if (linkedFile.isCommented() && linkedFile.getLink().equals(oldComment.toString())) {
+                linkedFile = new LinkedFile(linkedFile.getDescription(),
+                        newComment.toString(),
+                        linkedFile.getFileType());
+            }
+            fresh.add(linkedFile);
+        }
+        entry.setFiles(fresh);
+    }
+
+    public boolean hasOwnCommentCopy() {
+        String user = System.getProperty("user.name").trim().replaceAll("\\s+", "_");
+        Optional<Path> pathOpt = linkedFile.findIn(databaseContext, preferences.getFilePreferences());
+        if (pathOpt.isEmpty()) {
+            return false;
+        }
+        Path commented = FileUtil.buildCommentedCopy(pathOpt.get(), user);
+        return Files.exists(commented);
     }
 }

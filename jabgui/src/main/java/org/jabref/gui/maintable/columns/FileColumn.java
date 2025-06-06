@@ -1,20 +1,24 @@
 package org.jabref.gui.maintable.columns;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseButton;
+import javafx.scene.layout.HBox;
 
 import org.jabref.gui.DialogService;
 import org.jabref.gui.externalfiletype.ExternalFileType;
 import org.jabref.gui.externalfiletype.ExternalFileTypes;
 import org.jabref.gui.fieldeditors.LinkedFileViewModel;
 import org.jabref.gui.icon.IconTheme;
+import org.jabref.gui.icon.JabRefIcon;
 import org.jabref.gui.maintable.BibEntryTableViewModel;
 import org.jabref.gui.maintable.ColumnPreferences;
 import org.jabref.gui.maintable.MainTableColumnFactory;
@@ -23,6 +27,7 @@ import org.jabref.gui.preferences.GuiPreferences;
 import org.jabref.gui.util.ValueTableCellFactory;
 import org.jabref.logic.l10n.Localization;
 import org.jabref.logic.util.TaskExecutor;
+import org.jabref.logic.util.io.FileUtil;
 import org.jabref.model.database.BibDatabaseContext;
 import org.jabref.model.entry.LinkedFile;
 
@@ -176,19 +181,107 @@ public class FileColumn extends MainTableColumn<List<LinkedFile>> {
         return contextMenu;
     }
 
-    private Node createFileIcon(BibEntryTableViewModel entry, List<LinkedFile> linkedFiles) {
+    public Node createFileIcon(BibEntryTableViewModel entry, List<LinkedFile> linkedFiles) {
         if (entry.hasFullTextResultsProperty().get()) {
             return IconTheme.JabRefIcons.FILE_SEARCH.getGraphicNode();
+        }
+
+        String user = System.getProperty("user.name");
+        HBox icons = new HBox(2);
+        icons.setAlignment(Pos.CENTER);
+
+        for (LinkedFile plain : linkedFiles) {
+            if (plain.isCommented()) {
+                continue;
+            }
+
+            boolean plainExists = FileUtil.find(
+                    database, plain.getLink(), preferences.getFilePreferences()).isPresent();
+
+            JabRefIcon pdfIcon = ExternalFileTypes
+                    .getExternalFileTypeByLinkedFile(
+                            plain, true, preferences.getExternalApplicationsPreferences())
+                    .map(ExternalFileType::getIcon)
+                    .orElse(IconTheme.JabRefIcons.FILE);
+
+            Node baseIcon = (plainExists ? pdfIcon : pdfIcon.disabled()).getGraphicNode();
+            baseIcon.setOnMouseClicked(ev -> {
+                new LinkedFileViewModel(plain, entry.getEntry(), database,
+                        taskExecutor, dialogService, preferences).open();
+                ev.consume();
+            });
+            icons.getChildren().add(baseIcon);
+
+            boolean ownsComment = linkedFiles.stream().anyMatch(other ->
+                    other.isCommented()
+                            && sameBase(other, plain)
+                            && other.getLink().contains(" - comments " + user + ".pdf"));
+
+            if (ownsComment) {
+                icons.getChildren().add(createBubbleNode(entry, linkedFiles, plain, user));
+            }
+        }
+
+        if (icons.getChildren().isEmpty() && !linkedFiles.isEmpty()) {
+            LinkedFile comment = linkedFiles.getFirst();
+            JabRefIcon pdfIcon = ExternalFileTypes
+                    .getExternalFileTypeByLinkedFile(
+                            comment, true,
+                            preferences.getExternalApplicationsPreferences())
+                    .map(ExternalFileType::getIcon)
+                    .orElse(IconTheme.JabRefIcons.FILE);
+
+            Node disabledPdf = pdfIcon.disabled().getGraphicNode();
+            disabledPdf.setOnMouseClicked(ev -> {
+                new LinkedFileViewModel(comment, entry.getEntry(), database,
+                        taskExecutor, dialogService, preferences).open();
+                ev.consume();
+            });
+            icons.getChildren().add(disabledPdf);
+            icons.getChildren().add(createBubbleNode(entry, linkedFiles, comment, user));
+        }
+
+        if (!icons.getChildren().isEmpty()) {
+            return icons;
         }
         if (linkedFiles.size() > 1) {
             return IconTheme.JabRefIcons.FILE_MULTIPLE.getGraphicNode();
         } else if (linkedFiles.size() == 1) {
-            return ExternalFileTypes.getExternalFileTypeByLinkedFile(linkedFiles.getFirst(), true, preferences.getExternalApplicationsPreferences())
+            return ExternalFileTypes.getExternalFileTypeByLinkedFile(
+                                            linkedFiles.getFirst(), true,
+                                            preferences.getExternalApplicationsPreferences())
                                     .map(ExternalFileType::getIcon)
                                     .orElse(IconTheme.JabRefIcons.FILE)
                                     .getGraphicNode();
         } else {
             return null;
         }
+    }
+
+    private Node createBubbleNode(BibEntryTableViewModel entry,
+                                  List<LinkedFile> linkedFiles,
+                                  LinkedFile reference,
+                                  String user) {
+        Node bubble = IconTheme.JabRefIcons.FILE_COMMENT.getGraphicNode();
+        bubble.setOnMouseClicked(ev -> linkedFiles.stream()
+                                                  .filter(LinkedFile::isCommented)
+                                                  .filter(lf -> sameBase(lf, reference)
+                                                          && lf.getLink().contains(" - comments " + user + ".pdf"))
+                                                  .findFirst()
+                                                  .ifPresent(lf -> new LinkedFileViewModel(
+                                                          lf, entry.getEntry(), database,
+                                                          taskExecutor, dialogService, preferences).open()));
+        return bubble;
+    }
+
+    private static boolean sameBase(LinkedFile commented, LinkedFile original) {
+        String orig = FileUtil.getBaseName(Path.of(original.getLink())
+                                               .getFileName()
+                                               .toString());
+        String comm = FileUtil.getBaseName(Path.of(commented.getLink())
+                                               .getFileName()
+                                               .toString())
+                              .replaceAll(" - comments .*", "");
+        return orig.equals(comm);
     }
 }
